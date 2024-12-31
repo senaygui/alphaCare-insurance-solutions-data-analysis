@@ -1,34 +1,36 @@
 import pandas as pd
 import numpy as np
 import seaborn as sns
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
+
+
+
+# calculate percentage of missing values
+def calculate_missing_percentage(dataframe):
+    # Determine the total number of elements in the DataFrame
+    total_elements = np.prod(dataframe.shape)
+
+    # Count the number of missing values in each column
+    missing_values = dataframe.isna().sum()
+
+    # Sum the total number of missing values
+    total_missing = missing_values.sum()
+
+    # Compute the percentage of missing values
+    percentage_missing = (total_missing / total_elements) * 100
+
+    # Print the result, rounded to two decimal places
+    print(f"The dataset has {round(percentage_missing, 2)}% missing values.")
+
 
 def check_missing_values(df):
-    """
-    Check for missing values in the dataset and return a summary.
-
-    Parameters:
-        df (DataFrame): The dataset to check.
-
-    Returns:
-        DataFrame: A summary table with missing values, percentages, and column data types.
-    """
-    # Calculate missing values and percentages
+    """Check for missing values in the dataset."""
     missing_values = df.isnull().sum()
-    missing_percentages = 100 * missing_values / len(df)
+    missing_percentages = 100 * df.isnull().sum() / len(df)
+    column_data_types = df.dtypes
+    missing_table = pd.concat([missing_values, missing_percentages, column_data_types], axis=1, keys=['Missing Values', '% of Total Values','Data type'])
+    return missing_table.sort_values('% of Total Values', ascending=False).round(2)
 
-    # Filter to only columns with missing values
-    missing_values = missing_values[missing_values > 0]
-    missing_percentages = missing_percentages[missing_percentages > 0]
-
-    # Ensure the index aligns before concatenation
-    column_data_types = df.dtypes[missing_values.index]
-
-    # Create the summary DataFrame
-    summary = pd.concat([missing_values, missing_percentages, column_data_types], axis=1)
-    summary.columns = ['Missing Values', 'Percentage (%)', 'Data Type']
-
-    return summary
 
 def drop_high_missing_columns(df, threshold=50):
     """
@@ -44,87 +46,64 @@ def drop_high_missing_columns(df, threshold=50):
     print(f"Dropped columns: {list(columns_to_drop)}")
     return df_cleaned
 
-def handle_missing_values(df, method='mean'):
+def impute_missing_values(df):
     """
-    Handle missing values in the dataset using the specified method.
-
-    Parameters:
-        df (DataFrame): The dataset to handle missing values.
-        method (str): The method to use for filling missing values.
-            Options: 'mean', 'median', 'mode', or a specific value.
-
-    Returns:
-        DataFrame: The dataset with missing values filled.
+    Impute missing values: mode for categorical, median for numerical columns.
+    
+    :param df: pandas DataFrame
+    :return: DataFrame with imputed values
     """
     for column in df.columns:
         if df[column].dtype == 'object':
             # Categorical column: impute with mode
             mode_value = df[column].mode()[0]
+            #df[column].fillna(mode_value)
             df[column] = df[column].fillna(mode_value)
+
         else:
-            # Numerical column: handle based on method
-            if method == 'mean':
-                df[column] = df[column].fillna(df[column].mean())
-            elif method == 'median':
-                df[column] = df[column].fillna(df[column].median())
-            elif method == 'mode':
-                df[column] = df[column].fillna(df[column].mode()[0])
-            else:
-                # Use the specified value
-                df[column] = df[column].fillna(method)
+            # Numerical column: impute with median
+            median_value = df[column].median()
+            #df[column].fillna(median_value)
+            df[column] = df[column].fillna(median_value)
 
     return df
 
+
 # Function to plot histogram for numerical columns
-def plot_histogram(df, column, color=None):
-    """
-    Plot a histogram for the specified numerical column.
-    Parameters:
-        df (DataFrame): The dataset.
-        column (str): The column to plot.
-        color (str): The color for the histogram bars. Default is None.
-    Returns:
-        None
-    """
+def plot_histogram(df, column):
     plt.figure(figsize=(10, 6))
-    sns.histplot(df[column], kde=True, color=color)
+    sns.histplot(df[column], kde=True)
     plt.title(f'Distribution of {column}')
     plt.xlabel(column)
     plt.ylabel('Frequency')
     plt.show()
 
-# Function to plot bar chart for categorical columns with a color parameter
-def plot_bar_chart(df, column, color=None):
-    """
-    Plot a bar chart for the specified categorical column.
-    Parameters:
-        df (DataFrame): The dataset.
-        column (str): The column to plot.
-        color (str): The color for the bars. Default is None.
-    Returns:
-        None
-    """
+
+# Function to plot bar chart for categorical columns
+def plot_bar_chart(df, column):
     plt.figure(figsize=(12, 6))
-    df[column].value_counts().plot(kind='bar', color=color)
+    df[column].value_counts().plot(kind='bar')
     plt.title(f'Distribution of {column}')
     plt.xlabel(column)
     plt.ylabel('Count')
     plt.xticks(rotation=45)
     plt.show()
 
-    # function to perform correlation heatmap for key numerical columns
+# function to perform correlation heatmap for key numerical columns
 def plot_correlation_heatmap(df, columns):
     corr = df[columns].corr()
     plt.figure(figsize=(12, 10))
-    sns.heatmap(corr, annot=True, cmap='viridis', fmt='.2f', square=True)
+    sns.heatmap(corr, annot=True, cmap='coolwarm')
     plt.title('Correlation Heatmap')
     plt.show()
+
 
 def plot_scatter(df, x, y, hue=None):
     plt.figure(figsize=(12, 8))
     sns.scatterplot(data=df, x=x, y=y, hue=hue)
     plt.title(f'{y} vs {x}')
     plt.show()
+
 
 def plot_boxplot(df, x, y):
     plt.figure(figsize=(12, 6))
@@ -133,66 +112,42 @@ def plot_boxplot(df, x, y):
     plt.xticks(rotation=45)
     plt.show()
 
-def plot_countplot(df, x, hue=None):
-    plt.figure(figsize=(12, 6))
-    sns.countplot(data=df, x=x, hue=hue)
-    plt.title(f'Countplot of {x} by {hue}')
-    plt.xticks(rotation=45)
-    plt.show()
 
-def plot_pairplot(df, columns, hue=None):
-    plt.figure(figsize=(12, 10))
-    sns.pairplot(df[columns], hue=hue, palette='viridis')
-    plt.show()
-
-def handle_outliers(df):
+def cap_outliers(df, columns=None):
     """
-    Handle outliers in the dataset using the IQR method.
-
-    Parameters:
-        df (DataFrame): The dataset to handle outliers.
-        columns (list or None): List of columns to check for outliers. 
-                                If None, numerical columns are selected automatically.
-
-    Returns:
-        DataFrame: The dataset with outliers handled.
+    Cap outliers in specified numeric columns using the IQR method.
+    
+    :param df: pandas DataFrame
+    :param columns: list of column names to process (if None, all numeric columns will be processed)
+    :return: DataFrame with capped outliers
     """
-    import numpy as np  # Ensure numpy is imported
-
     # Create a copy of the DataFrame to avoid SettingWithCopyWarning
-    df_cleaned = df.copy()
-
-    # Automatically detect numeric columns if no columns are provided
-    columns = df_cleaned.select_dtypes(include=[np.number]).columns
-
-    # Iterate over each specified column and handle outliers
+    df_capped = df.copy()
+    
+    if columns is None:
+        columns = df_capped.select_dtypes(include=[np.number]).columns
+    
     for column in columns:
-        if column in df_cleaned.columns:  # Ensure the column exists in the DataFrame
-            Q1 = df_cleaned[column].quantile(0.25)  # First quartile
-            Q3 = df_cleaned[column].quantile(0.75)  # Third quartile
-            IQR = Q3 - Q1  # Interquartile range
-            lower_bound = Q1 - 1.5 * IQR  # Lower bound
-            upper_bound = Q3 + 1.5 * IQR  # Upper bound
-
-            # Cap values outside the bounds
-            df_cleaned[column] = np.where(
-                df_cleaned[column] < lower_bound, lower_bound, df_cleaned[column]
-            )
-            df_cleaned[column] = np.where(
-                df_cleaned[column] > upper_bound, upper_bound, df_cleaned[column]
-            )
-
-    return df_cleaned
+        Q1 = df_capped[column].quantile(0.25)
+        Q3 = df_capped[column].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        df_capped.loc[df_capped[column] < lower_bound, column] = lower_bound
+        df_capped.loc[df_capped[column] > upper_bound, column] = upper_bound
+    
+    return df_capped
 
 
 # outlier plot for each individual numeric column
 def outlier_box_plots(df):
-    numeric_columns = df.select_dtypes(include=[np.number]).columns
-    for column in numeric_columns:
+    for column in df:
         plt.figure(figsize=(10, 5))
         sns.boxplot(x=df[column])
         plt.title(f'Box plot of {column}')
         plt.show()
+
 
 def trend_over_geography(df, geography_column, value_column):
     grouped = df.groupby(geography_column)[value_column].mean().sort_values(ascending=False)
